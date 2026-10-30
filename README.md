@@ -1,5 +1,7 @@
 # This Fork is made to fix incompatibility with 26.1 and onward due to changes in particle APIs causing crashes and the entire bending system to freeze
 
+Most of the repo is left unchanged, the only change as of writing this is in the "fix-paper-26-particle-spawning" branch.
+
 ---
 
 # ProjectKorra [![travis](https://travis-ci.org/ProjectKorra/ProjectKorra.svg?branch=master)](https://travis-ci.org/ProjectKorra/ProjectKorra)

@@ -1,6 +1,7 @@
 package com.projectkorra.projectkorra.util;
 
 import com.projectkorra.projectkorra.GeneralMethods;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Particle.DustOptions;
@@ -89,9 +90,9 @@ public enum ParticleEffect {
 	SOUL_FIRE_FLAME (Particle.SOUL_FIRE_FLAME),
 	SPELL (Particle.SPELL),
 	SPELL_INSTANT (Particle.SPELL_INSTANT), @Deprecated INSTANT_SPELL (Particle.SPELL_INSTANT),
-	SPELL_MOB (Particle.SPELL_MOB), @Deprecated MOB_SPELL (Particle.SPELL_MOB),
-	SPELL_MOB_AMBIENT (GeneralMethods.getMCVersion() >= 1205 ? Particle.SPELL_MOB : Particle.SPELL_MOB_AMBIENT),
-	@Deprecated MOB_SPELL_AMBIENT (GeneralMethods.getMCVersion() >= 1205 ? Particle.SPELL_MOB : Particle.SPELL_MOB_AMBIENT),
+	SPELL_MOB (getEntityEffectParticle("SPELL_MOB")), @Deprecated MOB_SPELL (getEntityEffectParticle("SPELL_MOB")),
+	SPELL_MOB_AMBIENT (getEntityEffectParticle("SPELL_MOB_AMBIENT")),
+	@Deprecated MOB_SPELL_AMBIENT (getEntityEffectParticle("SPELL_MOB_AMBIENT")),
 	SPELL_WITCH (Particle.SPELL_WITCH), @Deprecated WITCH_SPELL (Particle.SPELL_WITCH),
 	SPIT (Particle.SPIT),
 	SQUID_INK (Particle.SQUID_INK),
@@ -115,6 +116,22 @@ public enum ParticleEffect {
 	private ParticleEffect(Particle particle) {
 		this.particle = particle;
 		this.dataClass = particle.getDataType();
+	}
+
+	/**
+	 * Resolves the old mob spell particle names without linking directly to
+	 * particle enum constants that were removed in newer Bukkit versions.
+	 */
+	private static Particle getEntityEffectParticle(String legacyName) {
+		if (GeneralMethods.getMCVersion() >= 1205) {
+			return Particle.valueOf("ENTITY_EFFECT");
+		}
+
+		try {
+			return Particle.valueOf(legacyName);
+		} catch (IllegalArgumentException ignored) {
+			return Particle.valueOf("ENTITY_EFFECT");
+		}
 	}
 	
 	public Particle getParticle() {
@@ -152,7 +169,7 @@ public enum ParticleEffect {
 	 * @param extra extra data to affect the particle, usually affects speed or does nothing
 	 */
 	public void display(Location loc, int amount, double offsetX, double offsetY, double offsetZ, double extra) {
-		loc.getWorld().spawnParticle(particle, loc, amount, offsetX, offsetY, offsetZ, extra, null, true);
+		display(loc, amount, offsetX, offsetY, offsetZ, extra, null);
 	}
 	
 	/**
@@ -179,10 +196,39 @@ public enum ParticleEffect {
 	 * @param data data to display the particle with, only applicable on several particle types (check the enum)
 	 */
 	public void display(Location loc, int amount, double offsetX, double offsetY, double offsetZ, double extra, Object data) {
-		if (dataClass.isAssignableFrom(Void.class) || data == null || !dataClass.isAssignableFrom(data.getClass())) {
-			display(loc, amount, offsetX, offsetY, offsetZ, extra);
-		} else {
-			loc.getWorld().spawnParticle(particle, loc, amount, offsetX, offsetY, offsetZ, extra, data, true);
+		if (dataClass.isAssignableFrom(Void.class)) {
+			loc.getWorld().spawnParticle(particle, loc, amount, offsetX, offsetY, offsetZ, extra, null, true);
+			return;
 		}
+
+		if (data != null && dataClass.isAssignableFrom(data.getClass())) {
+			loc.getWorld().spawnParticle(particle, loc, amount, offsetX, offsetY, offsetZ, extra, data, true);
+			return;
+		}
+
+		// Newer Bukkit APIs require data for several particles, including EFFECT
+		// and ENTITY_EFFECT. Supply neutral defaults when older call sites omit it.
+		Object defaultData = getDefaultData();
+		if (defaultData != null) {
+			loc.getWorld().spawnParticle(particle, loc, amount, offsetX, offsetY, offsetZ, extra, defaultData, true);
+		} else {
+			loc.getWorld().spawnParticle(particle, loc, amount, offsetX, offsetY, offsetZ, extra, null, true);
+		}
+	}
+
+	private Object getDefaultData() {
+		if (dataClass == Color.class) {
+			return Color.WHITE;
+		}
+
+		if (dataClass.getName().equals("org.bukkit.Particle$Spell")) {
+			try {
+				return dataClass.getConstructor(Color.class, float.class).newInstance(Color.WHITE, 1.0f);
+			} catch (ReflectiveOperationException exception) {
+				throw new IllegalStateException("Unable to create default particle spell data", exception);
+			}
+		}
+
+		return null;
 	}
 }

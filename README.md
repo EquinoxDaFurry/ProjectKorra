@@ -1,3 +1,7 @@
+# This Fork is made to fix incompatibility with 26.1 and onward due to changes in particle APIs causing crashes and the entire bending system to freeze
+
+---
+
 # ProjectKorra [![travis](https://travis-ci.org/ProjectKorra/ProjectKorra.svg?branch=master)](https://travis-ci.org/ProjectKorra/ProjectKorra)
 
 ![Core Icon](http://i.imgur.com/8XB8XHF.png)
